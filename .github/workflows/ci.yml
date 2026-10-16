@@ -76,10 +76,16 @@ jobs:
           for i in $(seq 1 30); do curl -s -o /dev/null localhost:8080/auth/login && break; sleep 2; done
           curl -s -o /dev/null localhost:8080/auth/login || { echo "Application non démarrée :"; grep -E "Caused by|Description|Could not resolve" app.log | head; exit 1; }
       - name: Scan ZAP baseline
-        uses: zaproxy/action-baseline@v0.12.0
+        # Mode baseline (passif). -I : les avertissements (WARN) ne font pas échouer le job
+        run: |
+          docker run --rm --network=host -u root -v "$PWD":/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:8080 -r rapport-zap.html -I
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          target: 'http://localhost:8080'
-          allow_issue_writing: false
+          name: rapport-zap
+          path: rapport-zap.html
       - name: Log de l'application
         if: always()
         run: cat app.log | tail -30
