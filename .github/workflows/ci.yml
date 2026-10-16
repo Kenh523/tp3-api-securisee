@@ -71,8 +71,10 @@ jobs:
         run: |
           mvn -B package -DskipTests
           export JWT_SECRET=$(openssl rand -base64 48)
+          export DEMO_PASSWORD=$(openssl rand -hex 12)
           nohup java -jar $(ls target/*.jar | grep -v original | head -1) > app.log 2>&1 &
           for i in $(seq 1 30); do curl -s -o /dev/null localhost:8080/auth/login && break; sleep 2; done
+          curl -s -o /dev/null localhost:8080/auth/login || { echo "Application non démarrée :"; grep -E "Caused by|Description|Could not resolve" app.log | head; exit 1; }
       - name: Scan ZAP baseline
         uses: zaproxy/action-baseline@v0.12.0
         with:
