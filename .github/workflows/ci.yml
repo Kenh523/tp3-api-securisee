@@ -48,8 +48,20 @@ jobs:
           distribution: temurin
           java-version: 17
           cache: maven
+      - name: Restaurer la base NVD (cache)
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: nvd-${{ github.run_id }}
+          restore-keys: nvd-
       - name: Dependency-Check
         run: mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+      - name: Sauvegarder la base NVD (cache), même si le job échoue
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: nvd-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
