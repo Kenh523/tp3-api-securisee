@@ -55,3 +55,29 @@ jobs:
         with:
           name: rapport-sca
           path: target/dependency-check-report.html
+
+  dast:
+    # DAST : lance l'application puis la scanne avec OWASP ZAP (mode baseline, passif)
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+      - name: Construire et démarrer l'application
+        run: |
+          mvn -B package -DskipTests
+          export JWT_SECRET=$(openssl rand -base64 48)
+          nohup java -jar $(ls target/*.jar | grep -v original | head -1) > app.log 2>&1 &
+          for i in $(seq 1 30); do curl -s -o /dev/null localhost:8080/auth/login && break; sleep 2; done
+      - name: Scan ZAP baseline
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:8080'
+          allow_issue_writing: false
+      - name: Log de l'application
+        if: always()
+        run: cat app.log | tail -30
