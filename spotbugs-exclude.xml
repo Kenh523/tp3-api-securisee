@@ -1,0 +1,7 @@
+<FindBugsFilter>
+  <!-- Faux positif : beans Spring injectés par constructeur (singletons gérés par le conteneur) -->
+  <Match>
+    <Class name="~com\.tp3\.api\.note\.(NoteController|NoteService)"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+</FindBugsFilter>
