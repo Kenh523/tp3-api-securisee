@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build-test:
-    # Compile le projet et lance les tests unitaires à chaque push
+    # Compile et lance les tests unitaires à chaque push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,3 +14,44 @@ jobs:
           java-version: 17
           cache: maven
       - run: mvn -B verify
+
+  secrets:
+    # Détection de secrets (clés, tokens) dans tout l'historique Git
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast:
+    # Analyse statique du code : échoue si SpotBugs trouve un bug
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+      - run: mvn -B compile com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check
+
+  sca:
+    # Analyse des dépendances : bloque si une CVE a un score CVSS >= 7
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+      - name: Dependency-Check
+        run: mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rapport-sca
+          path: target/dependency-check-report.html
